@@ -1,0 +1,557 @@
+import React, { useState } from 'react';
+import { 
+  Shield, Network, Settings, Activity, Plus, Trash2, Play, CheckCircle, 
+  XCircle, Globe, Terminal, Server, Lock, ChevronRight, Info, AlertTriangle,
+  ArrowRightLeft, HardDrive, Cpu, Database, Flag, Trophy, Layout,
+  BookOpen, Map, ShieldAlert, ShieldCheck, Menu, X, Wifi, Gamepad2, Pencil, 
+  ArrowUp, ArrowDown, Eye, EyeOff, Search, Printer, Radio
+} from 'lucide-react';
+
+// --- Configuration des Missions CTF (20 missions au total) ---
+const MISSIONS_DATA = [
+  { id: 'ping_gw', type: 'allow', category: 'Base', title: 'Mission 01: Diagnostic ICMP', targetIp: '192.168.1.1', targetPort: '0', protocol: 'ICMP', origin: 'LAN', flag: 'icmp: reachable-gw-01', desc: 'Le routeur ne répond à rien. Autorisez le Ping (ICMP) du LAN vers le routeur (192.168.1.1).', hint: 'Interface: LAN | Action: Pass | Proto: ICMP | Dest: 192.168.1.1' },
+  { id: 'dns_internal', type: 'allow', category: 'Base', title: 'Mission 02: Résolution de Noms', targetIp: '192.168.1.53', targetPort: '53', protocol: 'UDP', origin: 'LAN', flag: 'dns: query-resolved-77', desc: 'Le serveur DNS (1.53) est injoignable. Autorisez les requêtes UDP sur le port 53.', hint: 'N\'oubliez pas que le DNS utilise principalement le protocole UDP.' },
+  { id: 'web_internal', type: 'allow', category: 'Accès', title: 'Mission 03: Portail Employés', targetIp: '192.168.1.10', targetPort: '80', protocol: 'TCP', origin: 'LAN', flag: 'http: intranet-up-2026', desc: 'Ouvrez l\'accès HTTP (port 80) vers le serveur Web interne (1.10).', hint: 'Interface: LAN | Action: Pass | Proto: TCP | Dest: 192.168.1.10 | Port: 80' },
+  { id: 'ssh_admin', type: 'allow', category: 'Accès', title: 'Mission 04: Admin SSH', targetIp: '192.168.1.20', targetPort: '22', protocol: 'TCP', origin: 'LAN', flag: 'ssh: admin-vault-unlocked', desc: 'Permettez l\'accès SSH (port 22) au serveur Admin (1.20) depuis le LAN.', hint: 'Cible: 192.168.1.20 | Port: 22 | TCP' },
+  { id: 'nat_web', type: 'allow', category: 'NAT', title: 'Mission 05: Publication Web (NAT)', targetIp: '192.168.1.10', targetPort: '80', protocol: 'TCP', origin: 'WAN', externalPort: '8080', flag: 'nat: public-web-enabled', desc: 'Rendez le Web interne accessible depuis Internet sur le port 8080 du routeur.', hint: 'NAT (WAN:8080 -> 1.10:80) ET règle Firewall WAN (Pass TCP 1.10:80).' },
+  { id: 'block_guest_web', type: 'block', category: 'Sécurité', title: 'Mission 06: Isolation Guest', targetIp: '192.168.1.10', targetPort: '80', protocol: 'TCP', origin: 'GUEST', flag: 'sec: guest-is-blocked', desc: 'Les visiteurs (GUEST) ne doivent pas accéder au portail interne (1.10). Bloquez ce flux.', hint: 'Créez une règle BLOCK sur l\'interface GUEST vers 192.168.1.10 port 80.' },
+  { id: 'game_server', type: 'allow', category: 'NAT', title: 'Mission 07: Serveur Minecraft', targetIp: '192.168.1.100', targetPort: '25565', protocol: 'UDP', origin: 'WAN', externalPort: '25565', flag: 'game: craft-session-2026', desc: 'Publiez le serveur de jeu (1.100) en UDP sur son port par défaut 25565.', hint: 'NAT WAN 25565 -> LAN 1.100:25565 (UDP) + Règle Firewall WAN.' },
+  { id: 'db_isolation', type: 'block', category: 'Sécurité', title: 'Mission 08: Firewall Database', targetIp: '192.168.1.30', targetPort: '5432', protocol: 'TCP', origin: 'LAN', flag: 'db: zero-trust-db-00', desc: 'Bloquez l\'accès au port SQL (5432) du serveur de base de données (1.30) depuis le LAN.', hint: 'Placez la règle BLOCK en haut de la liste pour qu\'elle soit prioritaire.' },
+  { id: 'icmp_wan_off', type: 'block', category: 'Base', title: 'Mission 09: WAN Stealth', targetIp: '192.168.1.1', targetPort: '0', protocol: 'ICMP', origin: 'WAN', flag: 'sec: stealth-wan-mode', desc: 'Assurez-vous que le routeur ne répond pas au Ping sur le WAN.', hint: 'Le Default Deny s\'en occupe, mais testez-le pour valider le flag.' },
+  { id: 'sql_admin_only', type: 'allow', category: 'Avancé', title: 'Mission 10: Accès DB Restreint', targetIp: '192.168.1.30', targetPort: '5432', protocol: 'TCP', origin: 'LAN', flag: 'db: admin-only-success', desc: 'Seule la machine d\'admin (1.20) doit accéder à la DB (1.30). Bloquez les autres.', hint: '1: Pass 1.20 -> 1.30:5432 | 2: Block Any -> 1.30:5432.' },
+  
+  // --- Nouvelles Missions Additionnelles ---
+  { id: 'print_server', type: 'allow', category: 'Accès', title: 'Mission 11: Impression Réseau', targetIp: '192.168.1.50', targetPort: '9100', protocol: 'TCP', origin: 'LAN', flag: 'print: paper-jam-91', desc: 'Autorisez le trafic vers l\'imprimante réseau (1.50) sur le port JetDirect 9100 TCP.', hint: 'Interface: LAN | Pass | TCP | Dest: 192.168.1.50 | Port: 9100' },
+  { id: 'ntp_sync', type: 'allow', category: 'Base', title: 'Mission 12: Synchronisation Heure', targetIp: '192.168.1.1', targetPort: '123', protocol: 'UDP', origin: 'LAN', flag: 'time: sync-ok-123', desc: 'Le LAN doit pouvoir synchroniser son horloge avec le routeur via le port NTP 123 UDP.', hint: 'Règle LAN | Pass | UDP | Port: 123 | Dest: 192.168.1.1' },
+  { id: 'guest_dns', type: 'allow', category: 'Accès', title: 'Mission 13: DNS pour Visiteurs', targetIp: '192.168.1.53', targetPort: '53', protocol: 'UDP', origin: 'GUEST', flag: 'dns: guest-online-88', desc: 'Permettez au réseau GUEST d\'utiliser le serveur DNS interne (1.53).', hint: 'Interface GUEST | Pass | UDP | Dest: 192.168.1.53 | Port: 53' },
+  { id: 'ssh_nat_alt', type: 'allow', category: 'NAT', title: 'Mission 14: SSH Obfusqué', targetIp: '192.168.1.20', targetPort: '22', protocol: 'TCP', origin: 'WAN', externalPort: '2222', flag: 'ssh: hidden-port-access', desc: 'Mappez le port externe 2222 du WAN vers le port SSH (22) du serveur Admin (1.20).', hint: 'NAT WAN:2222 -> 1.20:22. N\'oubliez pas la règle Firewall WAN Pass TCP 22.' },
+  { id: 'block_inter_vlan', type: 'block', category: 'Sécurité', title: 'Mission 15: Isolation GUEST/Admin', targetIp: '192.168.1.20', targetPort: '22', protocol: 'TCP', origin: 'GUEST', flag: 'sec: vlan-segregation', desc: 'Bloquez tout accès SSH du réseau GUEST vers le serveur Admin (1.20).', hint: 'Interface GUEST | Block | TCP | Dest: 192.168.1.20 | Port: 22' },
+  { id: 'web_https', type: 'allow', category: 'Accès', title: 'Mission 16: Sécurisation HTTPS', targetIp: '192.168.1.10', targetPort: '443', protocol: 'TCP', origin: 'LAN', flag: 'ssl: handshake-secure', desc: 'Autorisez le port HTTPS (443) vers le serveur Web (1.10) pour le LAN.', hint: 'Interface: LAN | Pass | TCP | Dest: 192.168.1.10 | Port: 443' },
+  { id: 'api_exposure', type: 'allow', category: 'NAT', title: 'Mission 17: API Backend', targetIp: '192.168.1.30', targetPort: '8080', protocol: 'TCP', origin: 'WAN', externalPort: '9000', flag: 'api: endpoint-exposed', desc: 'Publiez l\'API du serveur DB (1.30:8080) sur le port externe 9000 du WAN.', hint: 'NAT WAN:9000 -> 1.30:8080 | Firewall WAN Pass TCP 8080.' },
+  { id: 'deny_all_guest', type: 'block', category: 'Sécurité', title: 'Mission 18: GUEST Lockdown', targetIp: '192.168.1.53', targetPort: '53', protocol: 'TCP', origin: 'GUEST', flag: 'sec: guest-tcp-dns-blocked', desc: 'Bloquez explicitement le DNS en TCP (port 53) sur l\'interface GUEST.', hint: 'Même si UDP est permis, bloquez TCP 53 sur GUEST.' },
+  { id: 'iot_isolation', type: 'block', category: 'Sécurité', title: 'Mission 19: Mur de Feu DB', targetIp: '192.168.1.30', targetPort: '0', protocol: 'Any', origin: 'WAN', flag: 'sec: zero-wan-to-db', desc: 'Vérifiez qu\'absolument aucun protocole (Any) ne passe du WAN vers la base de données.', hint: 'Testez n\'importe quel port du WAN vers 192.168.1.30. Doit être Bloqué.' },
+  { id: 'admin_full_access', type: 'allow', category: 'Avancé', title: 'Mission 20: Privilège Admin', targetIp: '192.168.1.1', targetPort: '443', protocol: 'TCP', origin: 'LAN', flag: 'sys: gui-access-granted', desc: 'Autorisez l\'accès à l\'interface de gestion du routeur (1.1) sur le port 443 TCP.', hint: 'Interface: LAN | Pass | TCP | Dest: 192.168.1.1 | Port: 443' },
+];
+
+const NETWORK_INVENTORY = [
+  { name: 'Routeur (Passerelle)', ip: '192.168.1.1', type: 'shield' },
+  { name: 'Serveur Web', ip: '192.168.1.10', services: 'HTTP(80), HTTPS(443)', type: 'web' },
+  { name: 'Serveur DNS', ip: '192.168.1.53', services: 'DNS(53)', type: 'wifi' },
+  { name: 'Admin Node', ip: '192.168.1.20', services: 'SSH(22)', type: 'database' },
+  { name: 'DB Server', ip: '192.168.1.30', services: 'SQL(5432), API(8080)', type: 'database' },
+  { name: 'Imprimante', ip: '192.168.1.50', services: 'Print(9100)', type: 'print' },
+  { name: 'PC Gamer', ip: '192.168.1.100', services: 'MC(25565)', type: 'game' },
+];
+
+const IconProxy = ({ type, size = 16, className = "" }) => {
+  switch (type) {
+    case 'shield': return <Shield size={size} className={className} />;
+    case 'web': return <Globe size={size} className={className} />;
+    case 'wifi': return <Wifi size={size} className={className} />;
+    case 'database': return <Database size={size} className={className} />;
+    case 'game': return <Gamepad2 size={size} className={className} />;
+    case 'print': return <Printer size={size} className={className} />;
+    default: return <Server size={size} className={className} />;
+  }
+};
+
+const App = () => {
+  const [activeTab, setActiveTab] = useState('missions');
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [logs, setLogs] = useState([]);
+  const [unlockedFlags, setUnlockedFlags] = useState({}); 
+  const [shownHintId, setShownHintId] = useState(null);
+  
+  const [rules, setRules] = useState([
+    { id: 999, interface: 'Any', action: 'Block', protocol: 'Any', source: 'Any', dest: 'Any', port: 'Any', desc: 'Default Deny All (Mandatory Security)' },
+  ]);
+
+  const [natRules, setNatRules] = useState([]);
+
+  const [simConfig, setSimConfig] = useState({
+    origin: 'LAN',
+    destIp: '192.168.1.10',
+    destPort: '80',
+    protocol: 'TCP'
+  });
+  
+  const [testResult, setTestResult] = useState(null);
+  const [modalMode, setModalMode] = useState(null); 
+  const [editingItem, setEditingItem] = useState(null);
+
+  const addLog = (msg, type = 'info') => {
+    setLogs(prev => [{ id: Date.now(), msg, type, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 15));
+  };
+
+  const runSimulation = () => {
+    addLog(`Simulation: ${simConfig.protocol} [${simConfig.origin}] -> ${simConfig.destIp}:${simConfig.destPort}`);
+    
+    let currentDestIp = simConfig.destIp;
+    let currentDestPort = simConfig.destPort;
+    let natApplied = null;
+
+    if (simConfig.origin === 'WAN') {
+      const matchNat = natRules.find(r => 
+        r.protocol === simConfig.protocol && 
+        r.extPort.toString() === simConfig.destPort.toString()
+      );
+      if (matchNat) {
+        natApplied = matchNat;
+        currentDestIp = matchNat.intIP;
+        currentDestPort = matchNat.intPort;
+        addLog(`NAT: Translation vers ${currentDestIp}:${currentDestPort}`, 'success');
+      }
+    }
+
+    let matchedRule = null;
+    const relevantRules = rules.filter(r => r.interface === simConfig.origin || r.interface === 'Any');
+
+    for (const rule of relevantRules) {
+      const protoMatch = rule.protocol === 'Any' || rule.protocol === simConfig.protocol;
+      const destMatch = rule.dest === 'Any' || rule.dest === currentDestIp;
+      const portMatch = rule.port === 'Any' || rule.port.toString() === currentDestPort.toString();
+      
+      if (protoMatch && destMatch && portMatch) {
+        matchedRule = rule;
+        break;
+      }
+    }
+
+    const isAllowed = matchedRule && matchedRule.action === 'Pass';
+    const status = isAllowed ? 'allowed' : 'blocked';
+    const targetDevice = NETWORK_INVENTORY.find(d => d.ip === currentDestIp);
+    const hostExists = !!targetDevice;
+
+    setTestResult({ status, hostExists, rule: matchedRule || { id: 'Default', desc: 'Implicit Deny' }, nat: natApplied, target: targetDevice });
+
+    MISSIONS_DATA.forEach(mission => {
+      const originMatch = mission.origin === simConfig.origin;
+      const protoMatch = mission.protocol ? mission.protocol === simConfig.protocol : true;
+      let targetMatch = false;
+
+      if (mission.origin === 'WAN' && mission.externalPort) {
+        targetMatch = simConfig.destPort.toString() === mission.externalPort;
+      } else {
+        targetMatch = simConfig.destIp === mission.targetIp && (mission.targetPort === '0' || simConfig.destPort.toString() === mission.targetPort);
+      }
+
+      if (originMatch && protoMatch && targetMatch) {
+        const missionSuccess = (mission.type === 'allow' && status === 'allowed' && hostExists) || (mission.type === 'block' && status === 'blocked');
+        if (missionSuccess && !unlockedFlags[mission.id]) {
+          setUnlockedFlags(prev => ({ ...prev, [mission.id]: true }));
+          addLog(`DÉFI RÉUSSI : ${mission.title}`, 'success');
+        }
+      }
+    });
+
+    if (isAllowed) {
+      if (hostExists) addLog(`Flux AUTORISÉ. Cible atteinte.`, 'success');
+      else addLog(`Flux AUTORISÉ mais IP ${currentDestIp} injoignable sur le LAN.`, 'warning');
+    } else {
+      addLog(`Flux BLOQUÉ par la sécurité.`, 'error');
+    }
+  };
+
+  const moveRule = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= rules.length - 1) return; 
+    const updated = [...rules];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    setRules(updated);
+  };
+
+  const saveFirewallRule = (data) => {
+    if (editingItem) {
+      setRules(rules.map(r => r.id === editingItem.id ? { ...data, id: r.id } : r));
+    } else {
+      const r = { ...data, id: Math.floor(Math.random() * 800) + 100 };
+      const u = [...rules]; u.splice(u.length - 1, 0, r); setRules(u);
+    }
+    setModalMode(null); setEditingItem(null);
+  };
+
+  const saveNatRule = (data) => {
+    if (editingItem) {
+      setNatRules(natRules.map(r => r.id === editingItem.id ? { ...data, id: r.id } : r));
+    } else {
+      setNatRules([...natRules, { ...data, id: Math.floor(Math.random() * 800) + 200 }]);
+    }
+    setModalMode(null); setEditingItem(null);
+  };
+
+  const progress = Math.round((Object.keys(unlockedFlags).length / MISSIONS_DATA.length) * 100);
+
+  return (
+    <div className="flex flex-col md:flex-row h-screen bg-[#0f172a] text-slate-200 font-sans overflow-hidden">
+      
+      {/* Mobile Header */}
+      <div className="md:hidden flex items-center justify-between p-4 bg-[#1e293b] border-b border-slate-800 z-50 shrink-0 shadow-lg">
+        <div className="flex items-center gap-2 text-orange-500 font-black tracking-tighter uppercase">
+          <Shield size={24} /> <span>OPNSim Pro</span>
+        </div>
+        <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 text-slate-400">
+          {isSidebarOpen ? <X size={28} /> : <Menu size={28} />}
+        </button>
+      </div>
+
+      {/* Sidebar */}
+      <aside className={`fixed inset-0 z-40 md:relative md:flex md:w-72 bg-[#111827] border-r border-slate-800 flex-col shadow-2xl transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="hidden md:flex p-8 border-b border-slate-800/50 items-center gap-3">
+          <div className="bg-orange-600 p-2.5 rounded-xl"><Shield size={24} className="text-white" /></div>
+          <div>
+            <h1 className="text-xl font-black tracking-tighter text-white leading-none">OPNSim Pro</h1>
+            <div className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mt-1">Labo v4.5</div>
+          </div>
+        </div>
+        <nav className="flex-1 py-8 md:py-6 overflow-y-auto px-4 md:px-0">
+          <NavItem active={activeTab === 'missions'} onClick={() => {setActiveTab('missions'); setSidebarOpen(false);}} icon={<Trophy size={18}/>} label="Défis & Flags" />
+          <NavItem active={activeTab === 'nat'} onClick={() => {setActiveTab('nat'); setSidebarOpen(false);}} icon={<ArrowRightLeft size={18}/>} label="NAT Settings" />
+          <NavItem active={activeTab === 'firewall'} onClick={() => {setActiveTab('firewall'); setSidebarOpen(false);}} icon={<Shield size={18}/>} label="Règles Pare-feu" />
+          <NavItem active={activeTab === 'tester'} onClick={() => {setActiveTab('tester'); setSidebarOpen(false);}} icon={<Play size={18}/>} label="Testeur de Flux" />
+        </nav>
+        <div className="p-6 bg-slate-900/50 border-t border-slate-800">
+           <div className="flex justify-between items-end mb-2">
+             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Capture</span>
+             <span className="text-xs font-black text-orange-500">{progress}%</span>
+           </div>
+           <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+              <div className="h-full bg-orange-600 transition-all duration-1000 shadow-[0_0_15px_rgba(234,88,12,0.4)]" style={{ width: `${progress}%` }}></div>
+           </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col overflow-hidden relative">
+        <header className="hidden md:flex h-16 border-b border-slate-800 items-center justify-between px-10 bg-[#1e293b]/30 backdrop-blur-xl shrink-0">
+          <div className="text-xs uppercase font-bold tracking-[0.2em] text-slate-500">{activeTab} Management</div>
+          <div className="flex items-center gap-4 text-xs font-mono text-green-500"><Activity size={12} className="animate-pulse" /> SYSTEM_ONLINE</div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar bg-[#0f172a]">
+          
+          {activeTab === 'missions' && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                  <div className="xl:col-span-2 space-y-6">
+                    <h2 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white">Objectifs du Labo</h2>
+                    <p className="text-slate-400 text-sm leading-relaxed">Rien ne passe par défaut. Créez les règles NAT et Firewall pour débloquer les flags secrets.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {MISSIONS_DATA.map((m) => (
+                        <div key={m.id} className={`p-5 md:p-6 rounded-3xl border-2 transition-all flex flex-col justify-between ${unlockedFlags[m.id] ? 'bg-green-500/5 border-green-500/20 shadow-lg' : 'bg-slate-900/60 border-slate-800 shadow-xl'}`}>
+                           <div className="flex justify-between items-start mb-3">
+                              <div className="flex items-center gap-2">
+                                {m.type === 'block' ? <Lock className="text-red-500" size={16}/> : <ShieldCheck className="text-green-500" size={16}/>}
+                                <h3 className="font-bold text-white text-xs md:text-sm uppercase leading-tight">{m.title}</h3>
+                              </div>
+                              {unlockedFlags[m.id] && <CheckCircle className="text-green-500" size={18}/>}
+                           </div>
+                           <p className="text-[10px] md:text-xs text-slate-500 mb-4 h-12 overflow-hidden leading-relaxed">{m.desc}</p>
+                           <div className="mb-4">
+                              <button onClick={() => setShownHintId(shownHintId === m.id ? null : m.id)} className="flex items-center gap-1 text-[9px] font-black uppercase text-orange-500/60 hover:text-orange-500 transition-colors">
+                                {shownHintId === m.id ? <EyeOff size={10}/> : <Eye size={10}/>} {shownHintId === m.id ? "Cacher l'indice" : "Voir l'indice"}
+                              </button>
+                              {shownHintId === m.id && <div className="mt-2 bg-black/40 p-2.5 rounded-xl border border-slate-800 font-mono text-[9px] text-slate-400 animate-in fade-in duration-200">{m.hint}</div>}
+                           </div>
+                           <div className={`p-3 rounded-xl border font-mono text-[11px] flex items-center justify-between ${unlockedFlags[m.id] ? 'bg-green-950/40 border-green-800 text-green-300 shadow-inner' : 'bg-black/60 border-slate-800 text-slate-700'}`}>
+                              <span className="truncate pr-2 select-all font-bold tracking-tight">{unlockedFlags[m.id] ? m.flag : 'flag: ???'}</span>
+                              <Flag size={12} className={unlockedFlags[m.id] ? 'text-green-400' : 'text-slate-800'}/>
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <div className="bg-[#1e293b] border border-slate-800 rounded-[2rem] p-6 md:p-8 shadow-2xl backdrop-blur-md sticky top-0">
+                       <h3 className="text-lg font-black mb-6 flex items-center gap-3 italic text-white uppercase tracking-tighter"><Map className="text-orange-500" size={20} /> Inventaire LAN</h3>
+                       <div className="space-y-3">
+                          {NETWORK_INVENTORY.map(item => (
+                            <div key={item.ip} className="flex items-center gap-4 p-4 rounded-2xl bg-[#0f172a]/50 border border-slate-800 shadow-sm transition-colors hover:border-slate-600">
+                               <div className="p-2.5 bg-slate-800 rounded-xl text-orange-500"><IconProxy type={item.type} /></div>
+                               <div className="flex-1 overflow-hidden">
+                                  <div className="text-[11px] font-bold text-white truncate">{item.name}</div>
+                                  <div className="text-[9px] font-mono text-slate-500 tracking-tighter">{item.ip}</div>
+                               </div>
+                               <div className="hidden sm:block text-[8px] font-black bg-black/40 px-2 py-1 rounded border border-slate-800 text-slate-600 uppercase">{item.services || 'GW'}</div>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'nat' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
+                <h2 className="text-3xl font-black tracking-tight uppercase italic text-white">NAT / Port Forward</h2>
+                <button onClick={() => {setEditingItem(null); setModalMode('nat');}} className="w-full sm:w-auto bg-orange-600 hover:bg-orange-500 transition-all px-6 py-3 rounded-2xl flex items-center justify-center gap-3 font-black shadow-lg active:scale-95 transition-all">
+                  <Plus size={20} /> Ajouter NAT
+                </button>
+              </div>
+              <div className="md:bg-[#1e293b] md:rounded-3xl md:border md:border-slate-800 md:overflow-hidden md:shadow-2xl overflow-x-auto">
+                <table className="hidden md:table w-full text-left text-sm">
+                  <thead className="bg-slate-800/50 text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-800">
+                    <tr><th className="p-5">Proto</th><th className="p-5">Port Public</th><th className="p-5">Cible Interne</th><th className="p-5 text-center">Action</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {natRules.map(rule => (
+                      <tr key={rule.id} className="hover:bg-slate-800/30 transition-colors">
+                        <td className="p-5 text-xs text-blue-400 font-mono">{rule.protocol}</td>
+                        <td className="p-5 font-mono text-orange-400 font-bold">{rule.extPort}</td>
+                        <td className="p-5 font-mono">{rule.intIP}:{rule.intPort}</td>
+                        <td className="p-5 text-center">
+                          <div className="flex justify-center gap-2">
+                             <button onClick={() => {setEditingItem(rule); setModalMode('nat');}} className="text-slate-400 hover:text-white p-2 transition-colors"><Pencil size={16}/></button>
+                             <button onClick={() => setNatRules(natRules.filter(r => r.id !== rule.id))} className="text-slate-600 hover:text-red-500 p-2 transition-colors"><Trash2 size={16}/></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {natRules.length === 0 && <tr><td colSpan="4" className="p-12 text-center text-slate-700 italic text-xs uppercase font-black opacity-30">Aucune règle NAT active</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'firewall' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-left">
+                <h2 className="text-3xl font-black tracking-tight uppercase italic text-white">Règles de Filtrage</h2>
+                <button onClick={() => {setEditingItem(null); setModalMode('firewall');}} className="w-full sm:w-auto bg-orange-600 hover:bg-orange-500 transition-all px-6 py-3 rounded-2xl flex items-center justify-center gap-3 font-black shadow-lg active:scale-95 transition-all">
+                  <Plus size={20} /> Nouvelle Règle
+                </button>
+              </div>
+              <div className="md:bg-[#1e293b] md:rounded-3xl md:border md:border-slate-800 md:overflow-hidden md:shadow-2xl overflow-x-auto">
+                <table className="hidden md:table w-full text-left text-sm">
+                  <thead className="bg-slate-800/50 text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-800">
+                    <tr><th className="p-5">Ordre</th><th className="p-5">Action</th><th className="p-5">Interface</th><th className="p-5">Proto</th><th className="p-5">Destination</th><th className="p-5 text-center">Admin</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {rules.map((rule, index) => (
+                      <tr key={rule.id} className={`hover:bg-slate-800/30 transition-colors ${rule.id === 999 ? 'bg-red-950/10 border-l-4 border-red-600' : ''}`}>
+                        <td className="p-5">
+                          <div className="flex items-center gap-3">
+                            {rule.id !== 999 && (
+                              <div className="flex flex-col">
+                                <button onClick={() => moveRule(index, -1)} disabled={index === 0} className="text-slate-600 hover:text-orange-500 disabled:opacity-0 transition-colors"><ArrowUp size={12}/></button>
+                                <button onClick={() => moveRule(index, 1)} disabled={index === rules.length - 2} className="text-slate-600 hover:text-orange-500 disabled:opacity-0 transition-colors"><ArrowDown size={12}/></button>
+                              </div>
+                            )}
+                            <span className="font-mono text-xs text-slate-500">#{index + 1}</span>
+                          </div>
+                        </td>
+                        <td className="p-5"><span className={`px-2 py-0.5 rounded-full text-[9px] font-black border uppercase ${rule.action === 'Pass' ? 'bg-green-950/20 text-green-400 border-green-900/30' : 'bg-red-950/20 text-red-400 border-red-900/30'}`}>{rule.action}</span></td>
+                        <td className="p-5 text-slate-400 font-bold uppercase">{rule.interface}</td>
+                        <td className="p-5 font-mono text-xs text-blue-400">{rule.protocol}</td>
+                        <td className="p-5 font-bold tracking-tight">{rule.dest}:{rule.port}</td>
+                        <td className="p-5 text-center">
+                          {rule.id !== 999 ? (
+                             <div className="flex justify-center gap-2">
+                                <button onClick={() => {setEditingItem(rule); setModalMode('firewall');}} className="text-slate-400 hover:text-white p-2 transition-colors"><Pencil size={14}/></button>
+                                <button onClick={() => setRules(rules.filter(r => r.id !== rule.id))} className="text-slate-600 hover:text-red-500 p-2 transition-colors"><Trash2 size={14}/></button>
+                             </div>
+                          ) : <span className="text-[9px] font-black text-slate-600 uppercase italic opacity-50">LOCKED</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'tester' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+               <div className="space-y-6">
+                 <div className="bg-[#1e293b] p-6 md:p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-6 relative overflow-hidden">
+                    <div className="grid grid-cols-2 gap-4 md:gap-6">
+                       <div className="space-y-2 text-left">
+                          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Départ</label>
+                          <select value={simConfig.origin} onChange={e => setSimConfig({...simConfig, origin: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs outline-none focus:border-orange-500 transition-all">
+                             <option>LAN</option><option>WAN</option><option>GUEST</option>
+                          </select>
+                       </div>
+                       <div className="space-y-2 text-left">
+                          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Protocol</label>
+                          <select value={simConfig.protocol} onChange={e => setSimConfig({...simConfig, protocol: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs outline-none focus:border-orange-500 font-mono transition-all">
+                             <option>TCP</option><option>UDP</option><option>ICMP</option>
+                          </select>
+                       </div>
+                    </div>
+                    <div className="space-y-2 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">IP Destination</label>
+                        <input type="text" value={simConfig.destIp} onChange={e => setSimConfig({...simConfig, destIp: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-4 rounded-xl text-sm font-mono focus:border-blue-500 outline-none transition-all" />
+                    </div>
+                    <div className="space-y-2 text-left">
+                        <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Port Dest</label>
+                        <input type="text" value={simConfig.destPort} onChange={e => setSimConfig({...simConfig, destPort: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-4 rounded-xl text-sm font-mono text-orange-400 outline-none focus:border-orange-500 transition-all" />
+                    </div>
+                    <button onClick={runSimulation} className="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition-all py-5 rounded-2xl flex items-center justify-center gap-4 font-black text-lg md:text-xl shadow-xl shadow-blue-900/40 uppercase italic tracking-tighter">
+                      <Play size={24} fill="currentColor" /> Injecter Paquet
+                    </button>
+                 </div>
+                 <div className="bg-black/80 p-6 rounded-3xl border border-slate-800 h-48 md:h-64 font-mono text-[9px] md:text-[10px] overflow-hidden flex flex-col shadow-2xl">
+                    <div className="flex items-center gap-2 text-slate-600 mb-3 uppercase tracking-widest font-black border-b border-slate-800 pb-2"><Terminal size={14}/> Console Logs</div>
+                    <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-2">
+                       {logs.map(log => <div key={log.id} className={`flex gap-3 text-left ${log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-green-400' : 'text-slate-600'}`}><span className="opacity-30">[{log.time}]</span><span>{log.msg}</span></div>)}
+                    </div>
+                 </div>
+               </div>
+               <div className="flex flex-col min-h-[400px]">
+                  {!testResult ? (
+                    <div className="flex-1 border-4 border-dashed border-slate-800 bg-slate-900/10 rounded-[3rem] flex flex-col items-center justify-center p-12 text-center text-slate-800">
+                       <Shield size={60} className="mb-4 opacity-5" />
+                       <h4 className="font-black italic uppercase text-[10px] tracking-[0.4em] opacity-30">Prêt pour l'inspection de trafic</h4>
+                    </div>
+                  ) : (
+                    <div className={`flex-1 rounded-[3rem] border-2 flex flex-col overflow-hidden shadow-2xl transition-all duration-700 ${testResult.status === 'allowed' && testResult.hostExists ? 'border-green-500/30 bg-green-500/5 shadow-green-900/10' : 'border-red-500/30 bg-red-500/5 shadow-red-900/10'}`}>
+                        <div className={`p-6 md:p-8 flex items-center justify-between ${testResult.status === 'allowed' && testResult.hostExists ? 'bg-green-600 text-white shadow-lg' : (testResult.status === 'allowed' ? 'bg-yellow-600' : 'bg-red-600') + ' text-white shadow-lg'}`}>
+                           <div className="flex items-center gap-4 font-black text-xl md:text-2xl italic tracking-tighter uppercase">
+                              {testResult.status === 'allowed' && testResult.hostExists ? <ShieldCheck size={32}/> : <ShieldAlert size={32}/>}
+                              {testResult.status === 'allowed' && testResult.hostExists ? 'PASS' : (testResult.status === 'allowed' ? 'IP INCONNUE' : 'BLOCKED')}
+                           </div>
+                           <span className="text-[10px] font-black bg-black/20 px-4 py-2 rounded-full uppercase italic tracking-widest">Rule: #{testResult.rule.id}</span>
+                        </div>
+                        <div className="p-8 md:p-10 flex-1 flex flex-col justify-center items-center text-center space-y-6">
+                           {testResult.status === 'allowed' && testResult.hostExists ? (
+                             <div className="animate-in zoom-in duration-300 flex flex-col items-center">
+                                <div className="p-8 bg-slate-800/40 rounded-full mb-6 relative border border-slate-700/50 shadow-inner">
+                                  {testResult.target ? <IconProxy type={testResult.target.type} size={48} className="text-blue-400" /> : <Globe size={48} className="text-blue-400" />}
+                                  <div className="absolute inset-0 border-4 border-green-500 rounded-full animate-ping opacity-10"></div>
+                                </div>
+                                <h4 className="text-xl md:text-2xl font-black text-white italic tracking-tighter uppercase mb-2">{testResult.target?.name || 'Destination Reached'}</h4>
+                                <div className="px-4 py-1.5 bg-green-500/10 rounded-xl border border-green-500/20 text-[10px] font-bold text-green-400 uppercase tracking-widest">Session Établie</div>
+                             </div>
+                           ) : testResult.status === 'allowed' ? (
+                             <div className="animate-in fade-in duration-500 flex flex-col items-center text-yellow-500">
+                                <Search size={64} className="mb-6 opacity-30" />
+                                <h4 className="text-2xl md:text-3xl font-black uppercase tracking-tighter italic">Pas de Route</h4>
+                                <p className="text-slate-500 text-xs mt-3 font-medium">Le pare-feu accepte le flux, mais l'IP {simConfig.destIp} n'existe pas sur le réseau LAN.</p>
+                             </div>
+                           ) : (
+                             <div className="animate-in fade-in duration-500 flex flex-col items-center text-red-500">
+                                <Lock size={64} className="mb-6 opacity-30" />
+                                <h4 className="text-2xl md:text-3xl font-black uppercase tracking-tighter italic">Accès Refusé</h4>
+                                <p className="text-slate-500 text-xs mt-3 font-medium">Flux détruit par la règle :<br/>"{testResult.rule.desc}"</p>
+                             </div>
+                           )}
+                        </div>
+                    </div>
+                  )}
+               </div>
+            </div>
+          )}
+
+        </div>
+      </main>
+
+      {modalMode && (
+        <Modal 
+          title={editingItem ? `Modification : #${editingItem.id}` : `Nouveaux Paramètres`}
+          type={modalMode} initialData={editingItem}
+          onClose={() => {setModalMode(null); setEditingItem(null);}} 
+          onConfirm={modalMode === 'firewall' ? saveFirewallRule : saveNatRule} 
+        />
+      )}
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        .animate-in { animation: fade-in 0.3s ease-out; }
+      `}</style>
+    </div>
+  );
+};
+
+const NavItem = ({ active, onClick, icon, label }) => (
+  <button onClick={onClick} className={`w-full flex items-center gap-4 px-8 py-4 text-sm transition-all relative group ${active ? 'text-orange-500 font-black bg-orange-600/10' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}>
+    {active && <div className="absolute left-0 w-1.5 h-6 bg-orange-600 rounded-r-full shadow-[2px_0_15px_rgba(234,88,12,0.8)]"></div>}
+    <div className={`transition-transform duration-300 group-hover:scale-110 ${active ? 'scale-110' : 'opacity-40 group-hover:opacity-100'}`}>{icon}</div>
+    {label}
+  </button>
+);
+
+const Modal = ({ title, onClose, onConfirm, type, initialData }) => {
+  const [data, setData] = useState(initialData || (type === 'firewall' ? { 
+    interface: 'LAN', action: 'Pass', protocol: 'TCP', dest: 'Any', port: 'Any', desc: '' 
+  } : { 
+    protocol: 'TCP', extPort: '8080', intIP: '192.168.1.10', intPort: '80', desc: '' 
+  }));
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-in overflow-y-auto">
+       <div className="bg-[#1e293b] border border-slate-700 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col my-auto border-t-8 border-orange-600">
+          <div className="p-6 md:p-8 border-b border-slate-700 flex justify-between items-center bg-slate-900/20 shrink-0">
+             <h3 className="text-xl font-black italic flex items-center gap-3 uppercase tracking-tighter">{title}</h3>
+             <button onClick={onClose}><XCircle size={28} className="text-slate-500 hover:text-white transition-colors"/></button>
+          </div>
+          <div className="p-6 md:p-10 space-y-6">
+             {type === 'firewall' ? (
+               <div className="grid grid-cols-2 gap-4 text-sm text-left">
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Interface</label>
+                    <select value={data.interface} onChange={e=>setData({...data, interface: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500 transition-all">
+                      <option>LAN</option><option>WAN</option><option>GUEST</option><option>Any</option>
+                    </select>
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Action</label>
+                    <select value={data.action} onChange={e=>setData({...data, action: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500 transition-all text-sm font-bold">
+                      <option>Pass</option><option>Block</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Cible IP (ex: 192.168.1.10)</label>
+                    <input value={data.dest} onChange={e=>setData({...data, dest: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-blue-500 transition-all" />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Port</label>
+                    <input value={data.port} onChange={e=>setData({...data, port: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-orange-500 transition-all" />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Protocol</label>
+                    <select value={data.protocol} onChange={e=>setData({...data, protocol: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500 transition-all font-mono">
+                      <option>TCP</option><option>UDP</option><option>ICMP</option><option>Any</option>
+                    </select>
+                  </div>
+               </div>
+             ) : (
+               <div className="grid grid-cols-2 gap-4 text-sm text-left">
+                  <div className="col-span-2 space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Port Public (WAN)</label>
+                    <input value={data.extPort} onChange={e=>setData({...data, extPort: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-orange-400 font-mono text-sm outline-none focus:border-orange-500 transition-all" />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Cible LAN IP</label>
+                    <input value={data.intIP} onChange={e=>setData({...data, intIP: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-orange-500 transition-all" />
+                  </div>
+                  <div className="col-span-1 space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Port Cible</label>
+                    <input value={data.intPort} onChange={e=>setData({...data, intPort: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-green-400 font-mono text-sm outline-none focus:border-orange-500 transition-all" />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Protocol</label>
+                    <select value={data.protocol} onChange={e=>setData({...data, protocol: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500 transition-all">
+                      <option>TCP</option><option>UDP</option>
+                    </select>
+                  </div>
+               </div>
+             )}
+             <div className="col-span-2 space-y-1 pt-2 border-t border-slate-800 text-left">
+                <label className="text-[10px] font-black text-slate-500 uppercase block tracking-widest">Commentaire</label>
+                <input value={data.desc} onChange={e=>setData({...data, desc: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl italic outline-none focus:border-orange-500 text-xs md:text-sm transition-all" />
+             </div>
+          </div>
+          <div className="p-8 bg-slate-900/50 flex gap-4 shrink-0">
+             <button onClick={onClose} className="flex-1 bg-slate-800 py-4 rounded-2xl font-bold hover:bg-slate-700 transition-colors">Annuler</button>
+             <button onClick={()=>onConfirm(data)} className="flex-1 bg-orange-600 py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all uppercase tracking-widest">Enregistrer</button>
+          </div>
+       </div>
+    </div>
+  );
+};
+
+export default App;
