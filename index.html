@@ -10,12 +10,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fira+Code&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
         .font-mono { font-family: 'Fira Code', monospace; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         @keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-in { animation: fade-in 0.4s ease-out; }
+        select option { background-color: #0f172a; color: #e2e8f0; }
     </style>
 </head>
 <body>
@@ -24,165 +25,165 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
 
-        // --- SVGs pour Lucide (Correction : Ajout de fragments <> pour les éléments adjacents) ---
+        // --- SVGs pour Lucide (Version intégrée et corrigée) ---
         const Icon = ({ name, size = 16, className = "" }) => {
             const icons = {
                 shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />,
                 network: (
-                    <>
+                    <React.Fragment>
                         <rect x="2" y="2" width="20" height="8" rx="2" />
                         <path d="M7 2v8" />
                         <path d="M17 2v8" />
                         <rect x="2" y="14" width="20" height="8" rx="2" />
                         <path d="M7 14v8" />
                         <path d="M17 14v8" />
-                    </>
+                    </React.Fragment>
                 ),
                 settings: (
-                    <>
+                    <React.Fragment>
                         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
                         <circle cx="12" cy="12" r="3" />
-                    </>
+                    </React.Fragment>
                 ),
                 activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />,
                 plus: (
-                    <>
+                    <React.Fragment>
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
-                    </>
+                    </React.Fragment>
                 ),
                 trash: (
-                    <>
+                    <React.Fragment>
                         <polyline points="3 6 5 6 21 6" />
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </>
+                    </React.Fragment>
                 ),
                 play: <polygon points="5 3 19 12 5 21 5 3" />,
                 check: <polyline points="20 6 9 17 4 12" />,
                 x: (
-                    <>
+                    <React.Fragment>
                         <line x1="18" y1="6" x2="6" y2="18" />
                         <line x1="6" y1="6" x2="18" y2="18" />
-                    </>
+                    </React.Fragment>
                 ),
                 globe: (
-                    <>
+                    <React.Fragment>
                         <circle cx="12" cy="12" r="10" />
                         <line x1="2" y1="12" x2="22" y2="12" />
                         <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                    </>
+                    </React.Fragment>
                 ),
                 terminal: (
-                    <>
+                    <React.Fragment>
                         <polyline points="4 17 10 11 4 5" />
                         <line x1="12" y1="19" x2="20" y2="19" />
-                    </>
+                    </React.Fragment>
                 ),
                 server: (
-                    <>
+                    <React.Fragment>
                         <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
                         <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
                         <line x1="6" y1="6" x2="6.01" y2="6" />
                         <line x1="6" y1="18" x2="6.01" y2="18" />
-                    </>
+                    </React.Fragment>
                 ),
                 lock: (
-                    <>
+                    <React.Fragment>
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </>
+                    </React.Fragment>
                 ),
                 chevron: <polyline points="9 18 15 12 9 6" />,
                 info: (
-                    <>
+                    <React.Fragment>
                         <circle cx="12" cy="12" r="10" />
                         <line x1="12" y1="16" x2="12" y2="12" />
                         <line x1="12" y1="8" x2="12.01" y2="8" />
-                    </>
+                    </React.Fragment>
                 ),
                 trophy: (
-                    <>
+                    <React.Fragment>
                         <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
                         <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
                         <path d="M4 22h16" />
                         <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
                         <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
                         <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-                    </>
+                    </React.Fragment>
                 ),
                 nat: (
-                    <>
+                    <React.Fragment>
                         <polyline points="17 1 21 5 17 9" />
                         <path d="M3 11V9a4 4 0 0 1 4-4h14" />
                         <polyline points="7 23 3 19 7 15" />
                         <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-                    </>
+                    </React.Fragment>
                 ),
                 map: (
-                    <>
+                    <React.Fragment>
                         <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
                         <line x1="8" y1="2" x2="8" y2="18" />
                         <line x1="16" y1="6" x2="16" y2="22" />
-                    </>
+                    </React.Fragment>
                 ),
                 wifi: (
-                    <>
+                    <React.Fragment>
                         <path d="M5 12.55a11 11 0 0 1 14.08 0" />
                         <path d="M1.42 9a16 16 0 0 1 21.16 0" />
                         <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
                         <line x1="12" y1="20" x2="12.01" y2="20" />
-                    </>
+                    </React.Fragment>
                 ),
                 db: (
-                    <>
+                    <React.Fragment>
                         <ellipse cx="12" cy="5" rx="9" ry="3" />
                         <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
                         <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-                    </>
+                    </React.Fragment>
                 ),
                 game: (
-                    <>
+                    <React.Fragment>
                         <line x1="6" y1="12" x2="10" y2="12" />
                         <line x1="8" y1="10" x2="8" y2="14" />
                         <rect x="15" y="13" width="3" height="3" rx="1.5" />
                         <rect x="12" y="8" width="3" height="3" rx="1.5" />
                         <path d="M15 6H9a8 8 0 0 0-8 8v1a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3v-1a8 8 0 0 0-8-8Z" />
-                    </>
+                    </React.Fragment>
                 ),
                 print: (
-                    <>
+                    <React.Fragment>
                         <polyline points="6 9 6 2 18 2 18 9" />
                         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                         <rect x="6" y="14" width="12" height="8" />
-                    </>
+                    </React.Fragment>
                 ),
                 pencil: <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />,
                 up: <polyline points="18 15 12 9 6 15" />,
                 down: <polyline points="6 9 12 15 18 9" />,
                 eye: (
-                    <>
+                    <React.Fragment>
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                         <circle cx="12" cy="12" r="3" />
-                    </>
+                    </React.Fragment>
                 ),
                 eyeoff: (
-                    <>
+                    <React.Fragment>
                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
                         <line x1="1" y1="1" x2="23" y2="23" />
-                    </>
+                    </React.Fragment>
                 ),
                 search: (
-                    <>
+                    <React.Fragment>
                         <circle cx="11" cy="11" r="8" />
                         <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </>
+                    </React.Fragment>
                 ),
                 menu: (
-                    <>
+                    <React.Fragment>
                         <line x1="3" y1="12" x2="21" y2="12" />
                         <line x1="3" y1="6" x2="21" y2="6" />
                         <line x1="3" y1="18" x2="21" y2="18" />
-                    </>
+                    </React.Fragment>
                 )
             };
             return (
@@ -203,7 +204,7 @@
             );
         };
 
-        // --- Missions ---
+        // --- Missions (20 missions complètes) ---
         const MISSIONS_DATA = [
             { id: 'ping_gw', type: 'allow', category: 'Base', title: 'Mission 01: Diagnostic ICMP', targetIp: '192.168.1.1', targetPort: '0', protocol: 'ICMP', origin: 'LAN', flag: 'icmp: reachable-gw-01', desc: 'Le routeur ne répond à rien. Autorisez le Ping (ICMP) du LAN vers le routeur (192.168.1.1) pour tester la gateway.', hint: 'Interface: LAN | Action: Pass | Proto: ICMP | Dest: 192.168.1.1' },
             { id: 'dns_internal', type: 'allow', category: 'Base', title: 'Mission 02: Résolution de Noms', targetIp: '192.168.1.53', targetPort: '53', protocol: 'UDP', origin: 'LAN', flag: 'dns: query-resolved-77', desc: 'Le serveur DNS (1.53) est injoignable. Autorisez les requêtes UDP sur le port 53.', hint: 'Le DNS utilise principalement le protocole UDP.' },
@@ -371,7 +372,7 @@
                             <div className="bg-orange-600 p-2.5 rounded-xl shrink-0"><Icon name="shield" className="text-white" size={24} /></div>
                             <div>
                                 <h1 className="text-xl font-black tracking-tighter text-white uppercase leading-none">OPNSim Pro</h1>
-                                <div className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mt-1">Export v5.1</div>
+                                <div className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mt-1">Export v5.2</div>
                             </div>
                         </div>
                         <nav className="flex-1 py-6 overflow-y-auto">
@@ -381,8 +382,8 @@
                             <NavItem active={activeTab === 'tester'} onClick={() => {setActiveTab('tester'); setSidebarOpen(false);}} icon="play" label="Testeur de Flux" />
                         </nav>
                         <div className="p-6 bg-slate-900/50 border-t border-slate-800">
-                           <div className="flex justify-between items-end mb-2">
-                             <span className="text-[10px] font-bold text-slate-500 uppercase">Progression</span>
+                           <div className="flex justify-between items-end mb-2 text-slate-400">
+                             <span className="text-[10px] font-bold uppercase">Progression</span>
                              <span className="text-xs font-black text-orange-500">{progress}%</span>
                            </div>
                            <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700">
@@ -403,7 +404,7 @@
                         <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar">
                             {activeTab === 'missions' && (
                                 <div className="space-y-8 animate-in">
-                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 text-left text-left">
+                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 text-left">
                                         <div className="xl:col-span-2 space-y-6">
                                             <h2 className="text-3xl md:text-4xl font-black italic tracking-tighter uppercase text-white">Capture The Flag</h2>
                                             <p className="text-slate-400 text-sm">Le routeur bloque tout. Configurez les accès pour débloquer les flags secrets.</p>
@@ -486,7 +487,7 @@
                             )}
 
                             {activeTab === 'firewall' && (
-                                <div className="space-y-6 animate-in text-left text-left">
+                                <div className="space-y-6 animate-in text-left">
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                         <h2 className="text-3xl font-black uppercase italic text-white">Règles de Filtrage</h2>
                                         <button onClick={() => {setEditingItem(null); setModalMode('firewall');}} className="w-full sm:w-auto bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded-2xl flex items-center justify-center gap-3 font-black shadow-lg">
@@ -533,28 +534,28 @@
                             {activeTab === 'tester' && (
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 animate-in text-left">
                                     <div className="space-y-6">
-                                        <div className="bg-[#1e293b] p-6 md:p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-6">
-                                            <div className="grid grid-cols-2 gap-4 text-left text-left">
+                                        <div className="bg-[#1e293b] p-6 md:p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-6 text-left">
+                                            <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-black uppercase text-slate-500">Interface Source</label>
-                                                    <select value={simConfig.origin} onChange={e => setSimConfig({...simConfig, origin: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs outline-none focus:border-orange-500">
+                                                    <select value={simConfig.origin} onChange={e => setSimConfig({...simConfig, origin: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs outline-none focus:border-orange-500 text-slate-200">
                                                         <option>LAN</option><option>WAN</option><option>GUEST</option>
                                                     </select>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-black uppercase text-slate-500">Protocol</label>
-                                                    <select value={simConfig.protocol} onChange={e => setSimConfig({...simConfig, protocol: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs outline-none focus:border-orange-500">
+                                                    <select value={simConfig.protocol} onChange={e => setSimConfig({...simConfig, protocol: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs outline-none focus:border-orange-500 font-mono text-slate-200">
                                                         <option>TCP</option><option>UDP</option><option>ICMP</option>
                                                     </select>
                                                 </div>
                                             </div>
                                             <div className="space-y-2 text-left">
                                                 <label className="text-[10px] font-black uppercase text-slate-500">IP Source (Simulée)</label>
-                                                <input type="text" value={simConfig.sourceIp} onChange={e => setSimConfig({...simConfig, sourceIp: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-4 rounded-xl text-sm font-mono focus:border-blue-500 outline-none" />
+                                                <input type="text" value={simConfig.sourceIp} onChange={e => setSimConfig({...simConfig, sourceIp: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-4 rounded-xl text-sm font-mono focus:border-blue-500 outline-none text-slate-200" />
                                             </div>
                                             <div className="space-y-2 text-left">
                                                 <label className="text-[10px] font-black uppercase text-slate-500">IP Destination</label>
-                                                <input type="text" value={simConfig.destIp} onChange={e => setSimConfig({...simConfig, destIp: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-4 rounded-xl text-sm font-mono focus:border-blue-500 outline-none" />
+                                                <input type="text" value={simConfig.destIp} onChange={e => setSimConfig({...simConfig, destIp: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-4 rounded-xl text-sm font-mono focus:border-blue-500 outline-none text-slate-200" />
                                             </div>
                                             <div className="space-y-2 text-left">
                                                 <label className="text-[10px] font-black uppercase text-slate-500">Port Dest</label>
@@ -578,7 +579,7 @@
                                                 <h4 className="font-black italic uppercase text-[10px] tracking-[0.4em] opacity-30">Lancer une injection</h4>
                                             </div>
                                         ) : (
-                                            <div className={`flex-1 rounded-[3rem] border-2 flex flex-col overflow-hidden shadow-2xl transition-all duration-700 ${testResult.status === 'allowed' && testResult.hostExists ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                                            <div className={`flex-1 rounded-[3rem] border-2 flex flex-col overflow-hidden shadow-2xl transition-all duration-700 ${testResult.status === 'allowed' && testResult.hostExists ? 'border-green-500/30 bg-green-500/5 shadow-green-900/10' : 'border-red-500/30 bg-red-500/5 shadow-red-900/10'}`}>
                                                 <div className={`p-6 md:p-8 flex items-center justify-between ${testResult.status === 'allowed' && testResult.hostExists ? 'bg-green-600 text-white shadow-lg' : (testResult.status === 'allowed' ? 'bg-yellow-600' : 'bg-red-600') + ' text-white'}`}>
                                                     <div className="flex items-center gap-4 font-black text-xl md:text-2xl italic tracking-tighter uppercase">
                                                         {testResult.status === 'allowed' && testResult.hostExists ? 'ACCÈS PASS' : (testResult.status === 'allowed' ? 'HÔTE INTROUVABLE' : 'ACCÈS BLOQUÉ')}
@@ -593,7 +594,7 @@
                                                                 <div className="absolute inset-0 border-4 border-green-500 rounded-full animate-ping opacity-10"></div>
                                                             </div>
                                                             <h4 className="text-xl md:text-2xl font-black text-white italic tracking-tighter uppercase mb-2">{testResult.target?.name}</h4>
-                                                            <div className="px-4 py-1.5 bg-green-500/10 rounded-xl border border-green-500/20 text-[10px] font-bold text-green-400 uppercase tracking-widest tracking-widest uppercase italic">Session Établie</div>
+                                                            <div className="px-4 py-1.5 bg-green-500/10 rounded-xl border border-green-500/20 text-[10px] font-bold text-green-400 uppercase tracking-widest uppercase italic">Session Établie</div>
                                                         </div>
                                                     ) : testResult.status === 'allowed' ? (
                                                         <div className="animate-in flex flex-col items-center text-yellow-500">
@@ -630,7 +631,7 @@
         };
 
         const NavItem = ({ active, onClick, icon, label }) => (
-            <button onClick={onClick} className={`w-full flex items-center gap-4 px-8 py-4 text-sm transition-all relative group ${active ? 'text-orange-500 font-black bg-orange-600/10 shadow-inner' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}>
+            <button onClick={onClick} className={`w-full flex items-center gap-4 px-8 py-4 text-sm transition-all relative group text-left ${active ? 'text-orange-500 font-black bg-orange-600/10 shadow-inner' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}>
                 {active && <div className="absolute left-0 w-1.5 h-6 bg-orange-600 rounded-r-full shadow-[2px_0_15px_rgba(234,88,12,0.8)]"></div>}
                 <div className={`transition-transform duration-300 group-hover:scale-110 ${active ? 'scale-110' : 'opacity-40 group-hover:opacity-100'}`}><Icon name={icon} size={18} /></div>
                 {label}
@@ -643,30 +644,74 @@
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-in overflow-y-auto">
                     <div className="bg-[#1e293b] border border-slate-700 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col my-auto border-t-8 border-orange-600">
                         <div className="p-6 md:p-8 border-b border-slate-700 flex justify-between items-center bg-slate-900/20 shrink-0">
-                            <h3 className="text-xl font-black italic flex items-center gap-3 uppercase tracking-tighter">{title}</h3>
+                            <h3 className="text-xl font-black italic flex items-center gap-3 uppercase tracking-tighter text-white">{title}</h3>
                             <button onClick={onClose} className="text-slate-500 hover:text-white"><Icon name="x" size={28} /></button>
                         </div>
-                        <div className="p-6 md:p-10 space-y-6 text-left text-left">
+                        <div className="p-6 md:p-10 space-y-6 text-left">
                             {type === 'firewall' ? (
                                 <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="col-span-1 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Interface</label><select value={data.interface} onChange={e=>setData({...data, interface: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500"><option>LAN</option><option>WAN</option><option>GUEST</option><option>Any</option></select></div>
-                                    <div className="col-span-1 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Action</label><select value={data.action} onChange={e=>setData({...data, action: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500"><option>Pass</option><option>Block</option></select></div>
-                                    <div className="col-span-2 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Source IP</label><input value={data.source} onChange={e=>setData({...data, source: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-blue-500" placeholder="Any ou IP" /></div>
-                                    <div className="col-span-2 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Destination IP</label><input value={data.dest} onChange={e=>setData({...data, dest: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-blue-500" placeholder="Any ou IP" /></div>
-                                    <div className="col-span-1 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Port</label><input value={data.port} onChange={e=>setData({...data, port: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-orange-500" /></div>
-                                    <div className="col-span-1 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Protocol</label><select value={data.protocol} onChange={e=>setData({...data, protocol: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500 font-mono"><option>TCP</option><option>UDP</option><option>ICMP</option><option>Any</option></select></div>
+                                    <div className="col-span-1 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Interface</label>
+                                        <select value={data.interface} onChange={e=>setData({...data, interface: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500 text-slate-200">
+                                            <option>LAN</option><option>WAN</option><option>GUEST</option><option>Any</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-span-1 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Action</label>
+                                        <select value={data.action} onChange={e=>setData({...data, action: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500 text-slate-200 font-bold">
+                                            <option>Pass</option><option>Block</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-span-2 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Source IP</label>
+                                        <input value={data.source} onChange={e=>setData({...data, source: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-blue-500 text-slate-200" placeholder="Any ou IP" />
+                                    </div>
+                                    <div className="col-span-2 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Destination IP</label>
+                                        <input value={data.dest} onChange={e=>setData({...data, dest: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-blue-500 text-slate-200" placeholder="Any ou IP" />
+                                    </div>
+                                    <div className="col-span-1 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Port</label>
+                                        <input value={data.port} onChange={e=>setData({...data, port: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-orange-500 text-slate-200" />
+                                    </div>
+                                    <div className="col-span-1 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Protocol</label>
+                                        <select value={data.protocol} onChange={e=>setData({...data, protocol: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500 font-mono text-slate-200">
+                                            <option>TCP</option><option>UDP</option><option>ICMP</option><option>Any</option>
+                                        </select>
+                                    </div>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="col-span-2 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Port Public (WAN)</label><input value={data.extPort} onChange={e=>setData({...data, extPort: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-orange-400 font-mono text-sm outline-none focus:border-orange-500" /></div>
-                                    <div className="col-span-1 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Cible LAN IP</label><input value={data.intIP} onChange={e=>setData({...data, intIP: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-orange-500" /></div>
-                                    <div className="col-span-1 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Port Cible</label><input value={data.intPort} onChange={e=>setData({...data, intPort: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-green-400 font-mono text-sm outline-none focus:border-orange-500" /></div>
-                                    <div className="col-span-2 space-y-1"><label className="text-[10px] font-black text-slate-500 uppercase">Protocol</label><select value={data.protocol} onChange={e=>setData({...data, protocol: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500"><option>TCP</option><option>UDP</option></select></div>
+                                <div className="grid grid-cols-2 gap-4 text-sm text-left">
+                                    <div className="col-span-2 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Port Public (WAN)</label>
+                                        <input value={data.extPort} onChange={e=>setData({...data, extPort: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-orange-400 font-mono text-sm outline-none focus:border-orange-500" />
+                                    </div>
+                                    <div className="col-span-1 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Cible LAN IP</label>
+                                        <input value={data.intIP} onChange={e=>setData({...data, intIP: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl font-mono text-sm outline-none focus:border-orange-500 text-slate-200" />
+                                    </div>
+                                    <div className="col-span-1 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Port Cible</label>
+                                        <input value={data.intPort} onChange={e=>setData({...data, intPort: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl text-green-400 font-mono text-sm outline-none focus:border-orange-500" />
+                                    </div>
+                                    <div className="col-span-2 space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase">Protocol</label>
+                                        <select value={data.protocol} onChange={e=>setData({...data, protocol: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-orange-500 text-slate-200">
+                                            <option>TCP</option><option>UDP</option>
+                                        </select>
+                                    </div>
                                 </div>
                             )}
-                            <div className="col-span-2 space-y-1 pt-2 border-t border-slate-800"><label className="text-[10px] font-black text-slate-500 uppercase">Commentaire</label><input value={data.desc} onChange={e=>setData({...data, desc: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl italic outline-none focus:border-orange-500 text-xs md:text-sm" /></div>
+                            <div className="col-span-2 space-y-1 pt-2 border-t border-slate-800 text-left">
+                                <label className="text-[10px] font-black text-slate-400 uppercase">Commentaire</label>
+                                <input value={data.desc} onChange={e=>setData({...data, desc: e.target.value})} className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl italic outline-none focus:border-orange-500 text-xs md:text-sm text-slate-200" />
+                            </div>
                         </div>
-                        <div className="p-8 bg-slate-900/50 flex gap-4 shrink-0"><button onClick={onClose} className="flex-1 bg-slate-800 py-4 rounded-2xl font-bold hover:bg-slate-700 transition-colors">Annuler</button><button onClick={()=>onConfirm(data)} className="flex-1 bg-orange-600 py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 transition-all">Sauvegarder</button></div>
+                        <div className="p-8 bg-slate-900/50 flex gap-4 shrink-0">
+                            <button onClick={onClose} className="flex-1 bg-slate-800 py-4 rounded-2xl font-bold hover:bg-slate-700 text-slate-400">Annuler</button>
+                            <button onClick={()=>onConfirm(data)} className="flex-1 bg-orange-600 py-4 rounded-2xl font-black text-lg shadow-lg active:scale-95 text-white">Sauvegarder</button>
+                        </div>
                     </div>
                 </div>
             );
